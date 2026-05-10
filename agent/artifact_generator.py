@@ -7,16 +7,28 @@ MemoryChunk → four concrete artifacts saved to generated/:
 """
 
 import re
+import os
 import anthropic
 from pathlib import Path
 from agent.parser import MemoryChunk
 
-_client = anthropic.Anthropic()
+_client = None
 GENERATED_DIR = Path("generated")
 
 
+def _demo_mode() -> bool:
+    return os.environ.get("PMA_DEMO_MODE") == "1" or not os.environ.get("ANTHROPIC_API_KEY")
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        _client = anthropic.Anthropic()
+    return _client
+
+
 def _call(prompt: str, system: str, max_tokens: int = 1024) -> str:
-    response = _client.messages.create(
+    response = _get_client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=max_tokens,
         system=system,
@@ -31,6 +43,28 @@ def _strip_fences(text: str, lang: str = "") -> str:
 
 
 def generate_regression_test(chunk: MemoryChunk) -> str:
+    if _demo_mode():
+        return f'''"""Regression coverage for the {chunk.component} incident."""
+
+from unittest.mock import Mock
+
+
+def test_checkout_product_loading_stays_batched():
+    """Catches N+1 style regressions by enforcing a small query budget."""
+    query_counter = Mock()
+
+    def load_order_with_products(order_id):
+        query_counter("orders")
+        query_counter("order_items")
+        query_counter("products")
+        return {{"id": order_id, "products": ["sku-1", "sku-2"]}}
+
+    order = load_order_with_products("ord_123")
+
+    assert order["products"]
+    assert query_counter.call_count <= 3
+'''
+
     system = "You are a senior software engineer writing pytest regression tests. Output only valid Python code, no explanation."
     prompt = f"""Write a pytest regression test for this incident:
 
@@ -52,6 +86,35 @@ Output only the Python file content."""
 
 
 def generate_monitor(chunk: MemoryChunk) -> str:
+    if _demo_mode():
+        return f"""apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {chunk.component.replace("_", "-")}-incident-guardrails
+spec:
+  groups:
+    - name: {chunk.component}.risk
+      rules:
+        - alert: CheckoutLatencyCritical
+          expr: histogram_quantile(0.99, rate(payments_checkout_duration_seconds_bucket[5m])) > 2
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Checkout p99 latency is above incident threshold"
+            description: "{chunk.detection_signal}"
+            runbook_url: "https://runbooks.example.com/{chunk.component}"
+        - alert: CheckoutLatencyWarning
+          expr: histogram_quantile(0.99, rate(payments_checkout_duration_seconds_bucket[5m])) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Checkout p99 latency is elevated"
+            description: "Early warning for recurring {chunk.component} incident pattern."
+            runbook_url: "https://runbooks.example.com/{chunk.component}"
+"""
+
     system = "You are a site reliability engineer. Output only valid YAML, no explanation."
     prompt = f"""Write a Prometheus alerting rule (YAML) for this incident pattern:
 
@@ -72,6 +135,38 @@ Output only the YAML."""
 
 
 def generate_runbook(chunk: MemoryChunk) -> str:
+    if _demo_mode():
+        return f"""# Runbook: {chunk.component} Recurrence
+
+## Alert
+{chunk.detection_signal}
+
+## Impact
+Users may see elevated latency, failed requests, or degraded checkout completion.
+
+## Diagnosis steps
+1. Check p99 latency and error rate.
+   ```bash
+   kubectl top pods -n production
+   ```
+2. Inspect recent database query volume.
+   ```sql
+   SELECT query, calls, mean_exec_time FROM pg_stat_statements ORDER BY calls DESC LIMIT 10;
+   ```
+3. Compare the active deploy against the last known safe revision.
+
+## Fix
+1. Revert or patch the risky change.
+2. Restore the prevention pattern: {chunk.fix_pattern}
+3. Deploy and watch latency plus database CPU.
+
+## Verification
+Confirm p99 latency, error rate, and saturation metrics return to baseline for 15 minutes.
+
+## Escalation
+Page the service owner and database on-call if the issue remains above threshold after rollback.
+"""
+
     system = "You are an SRE writing an incident runbook. Output markdown."
     prompt = f"""Write a concise incident response runbook for:
 
@@ -96,6 +191,32 @@ Be specific — include realistic kubectl, SQL, or CLI commands."""
 
 
 def generate_ticket(chunk: MemoryChunk) -> str:
+    if _demo_mode():
+        return f"""# [TICKET] Prevent recurrence: {chunk.component}
+**Priority:** P1
+**Component:** {chunk.component}
+**Labels:** {", ".join(chunk.tags)}
+
+## Problem
+{chunk.root_cause}
+
+## Root cause reference
+Incident date: {chunk.date}  
+Severity: {chunk.severity}
+
+## Acceptance criteria
+- [ ] Add regression coverage for the failure mode.
+- [ ] Add or tune monitoring for: {chunk.detection_signal}
+- [ ] Document the response path in the service runbook.
+- [ ] Validate the fix in staging before release.
+
+## Implementation notes
+{chunk.fix_pattern}
+
+## Definition of done
+The recurring risk is covered by CI, monitored in production, and documented for on-call response.
+"""
+
     system = "You are an engineering manager writing a prevention ticket. Output markdown."
     prompt = f"""Write a Jira/Linear prevention ticket for:
 

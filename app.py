@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from pathlib import Path
 
 st.set_page_config(
@@ -6,6 +7,19 @@ st.set_page_config(
     page_icon="🛡️",
     layout="wide",
 )
+
+with st.sidebar:
+    st.header("Demo Controls")
+    demo_mode = st.toggle(
+        "Use local demo mode",
+        value=os.environ.get("PMA_DEMO_MODE", "1") == "1",
+        help="Runs deterministic local parsing, artifact generation, and PR review without model API calls.",
+    )
+    os.environ["PMA_DEMO_MODE"] = "1" if demo_mode else "0"
+    if demo_mode:
+        st.caption("No external model calls will be made.")
+    elif not os.environ.get("ANTHROPIC_API_KEY"):
+        st.warning("Set ANTHROPIC_API_KEY to use live model calls.")
 
 from agent.parser import parse_postmortem
 from agent.memory import store, all_chunks, count as memory_count
