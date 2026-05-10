@@ -1,0 +1,53 @@
+diff --git a/app/models/order.rb b/app/models/order.rb
+index 3a4f2d1..9b87c33 100644
+--- a/app/models/order.rb
++++ b/app/models/order.rb
+@@ -12,8 +12,7 @@ class Order < ApplicationRecord
+   belongs_to :user
+   has_many :order_items
+-  has_many :products, through: :order_items
+
+   scope :recent, -> { order(created_at: :desc).limit(100) }
+-  scope :with_products, -> { eager_load(:order_items).eager_load(:products) }
++  scope :with_products, -> { joins(:order_items) }
+
+   def total_price
+     order_items.sum(&:price)
+diff --git a/app/serializers/order_serializer.rb b/app/serializers/order_serializer.rb
+index c2a1f58..d4e9b01 100644
+--- a/app/serializers/order_serializer.rb
++++ b/app/serializers/order_serializer.rb
+@@ -8,9 +8,9 @@ class OrderSerializer
+
+   def serialize(order)
+-    products = order.products
++    products = order.order_items.map { |item| Product.find(item.product_id) }
+     {
+       id: order.id,
+       user_id: order.user_id,
+       products: products.map { |p| { id: p.id, name: p.name, price: p.price } },
+       total: order.total_price,
+     }
+   end
+diff --git a/app/controllers/checkout_controller.rb b/app/controllers/checkout_controller.rb
+index 8f3bc10..a94d7b0 100644
+--- a/app/controllers/checkout_controller.rb
++++ b/app/controllers/checkout_controller.rb
+@@ -5,7 +5,7 @@ class CheckoutController < ApplicationController
+
+   def show
+-    @order = Order.with_products.find(params[:id])
++    @order = Order.find(params[:id])
+     render json: OrderSerializer.new.serialize(@order)
+   end
+
+diff --git a/config/database.yml b/config/database.yml
+index 1a2b3c4..5d6e7f8 100644
+--- a/config/database.yml
++++ b/config/database.yml
+@@ -18,5 +18,5 @@ production:
+   host: <%= ENV['DB_HOST'] %>
+   username: <%= ENV['DB_USER'] %>
+   password: <%= ENV['DB_PASSWORD'] %>
+-  pool: 25
++  pool: 20

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "component": "payments-service",
+    "root_cause": "ORM migration in PR #4412 removed eager_load(:products) annotation, causing one SQL query per order line item instead of a single batched query (N+1 pattern).",
+    "fix_pattern": "Re-added eager_load(:products) to Order.with_products scope; added composite DB index on order_items(product_id); added CI integration test asserting max 3 DB queries per checkout request.",
+    "detection_signal": "p99 checkout latency > 2s + RDS CPU spike to 94%",
+    "severity": "SEV-2",
+    "date": "2025-11-03",
+    "tags": ["database", "latency", "n+1", "orm", "checkout"],
+    "raw_summary": "Payments checkout p99 spiked to 4.8s due to N+1 queries after an ORM migration removed eager loading of products."
+  }
+]

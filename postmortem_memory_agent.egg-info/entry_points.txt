@@ -1,0 +1,2 @@
+[console_scripts]
+pma = agent.cli:main

@@ -1,14 +1,25 @@
+Metadata-Version: 2.4
+Name: postmortem-memory-agent
+Version: 0.1.0
+Summary: Semantic memory layer for incident response — compress postmortems, generate artifacts, block risky PRs
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: anthropic>=0.40.0
+Requires-Dist: chromadb>=0.5.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: click>=8.1.0
+Requires-Dist: rich>=13.0.0
+Provides-Extra: app
+Requires-Dist: streamlit>=1.35.0; extra == "app"
+Requires-Dist: pandas>=2.0.0; extra == "app"
+Requires-Dist: python-multipart>=0.0.9; extra == "app"
+Dynamic: license-file
+
 # Postmortem Memory Agent
 
 > A semantic memory layer for incident response agents — compresses past postmortems into token-tiny chunks, generates actionable artifacts, and blocks risky PRs before they ship.
-
-## Two surfaces, two audiences
-
-| | Engineers | Managers |
-|---|---|---|
-| **Interface** | `pma` CLI | Streamlit web app |
-| **Install** | `pip install git+https://github.com/AngelaWuRX/Postmortem-Memory-Agent` | `streamlit run app.py` |
-| **Use case** | Ingest from terminal, pipe into CI, review diffs | Browse history, assess PRs, download artifacts |
 
 Built as a complementary add-on to [Entelligence.AI's Ellie](https://entelligence.ai). Ellie reads diffs and postmortems and links alerts to code history. The gap: every incident starts cold. This agent solves the memory problem — and closes the loop by generating the artifacts that prevent recurrence.
 
@@ -50,41 +61,13 @@ New PR diff ──▶ [pr_reviewer.py] ──── retrieves relevant past inci
 
 ## Quick Start
 
-### Engineers — CLI
-
 ```bash
-# Install directly from GitHub
-pip install git+https://github.com/AngelaWuRX/Postmortem-Memory-Agent.git
-
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Ingest a postmortem (parses + stores + generates all artifacts)
-pma ingest postmortem.md
-
-# Ingest a whole folder at once
-pma ingest sample_data/
-
-# Review a PR diff for incident risk
-pma review my_branch.diff
-
-# Query memory with an alert
-pma query "payments p99 spiking, DB CPU at 90%"
-
-# List all stored incidents
-pma memory
-```
-
-### Managers — Web App
-
-```bash
-git clone https://github.com/AngelaWuRX/Postmortem-Memory-Agent
-cd Postmortem-Memory-Agent
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...
+export ANTHROPIC_API_KEY=your_key_here
+
+# Launch the Streamlit app
 streamlit run app.py
 ```
-
-Open http://localhost:8501
 
 ---
 

@@ -1,0 +1,48 @@
+diff --git a/app/assets/stylesheets/checkout.css b/app/assets/stylesheets/checkout.css
+index 1c2d3e4..5f6a7b8 100644
+--- a/app/assets/stylesheets/checkout.css
++++ b/app/assets/stylesheets/checkout.css
+@@ -14,7 +14,7 @@
+ .checkout-btn {
+-  background-color: #0070f3;
++  background-color: #0057cc;
+   color: white;
+   padding: 12px 24px;
+   border-radius: 6px;
+-  font-size: 16px;
++  font-size: 15px;
+   font-weight: 600;
+ }
+
+@@ -28,6 +28,10 @@
+ .order-summary {
+   border: 1px solid #e5e7eb;
+   border-radius: 8px;
++  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+ }
+
++.order-total {
++  font-size: 18px;
++  font-weight: 700;
++}
+diff --git a/app/views/checkout/show.html.erb b/app/views/checkout/show.html.erb
+index 9a8b7c6..2d3e4f5 100644
+--- a/app/views/checkout/show.html.erb
++++ b/app/views/checkout/show.html.erb
+@@ -31,6 +31,7 @@
+   <div class="order-summary">
+     <h3>Order Summary</h3>
++    <p class="order-subtitle">Review your items before completing purchase</p>
+     <%= render partial: 'order_items', locals: { items: @order.order_items } %>
+-    <div class="total"><%= number_to_currency(@order.total_price) %></div>
++    <div class="order-total"><%= number_to_currency(@order.total_price) %></div>
+   </div>
+diff --git a/config/locales/en.yml b/config/locales/en.yml
+index 4c5d6e7..8f9a0b1 100644
+--- a/config/locales/en.yml
++++ b/config/locales/en.yml
+@@ -22,4 +22,5 @@ en:
+   checkout:
+     title: "Checkout"
+     complete_button: "Complete Purchase"
++    summary_subtitle: "Review your items before completing purchase"
