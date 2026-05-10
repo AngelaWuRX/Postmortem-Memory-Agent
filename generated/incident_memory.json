@@ -7,7 +7,30 @@
     "detection_signal": "p99 checkout latency > 2s + RDS CPU spike to 94%",
     "severity": "SEV-2",
     "date": "2025-11-03",
-    "tags": ["database", "latency", "n+1", "orm", "checkout"],
+    "tags": [
+      "database",
+      "latency",
+      "n+1",
+      "orm",
+      "checkout"
+    ],
     "raw_summary": "Payments checkout p99 spiked to 4.8s due to N+1 queries after an ORM migration removed eager loading of products."
+  },
+  {
+    "id": "54660acf-0cb0-49b1-ac95-5c3563c07d3a",
+    "component": "payments-service",
+    "root_cause": "An ORM migration removed eager loading, causing checkout serialization to lazy-load products one item at a time.",
+    "fix_pattern": "Restore eager loading, batch product lookups, add query-count regression coverage, and keep supporting indexes in place.",
+    "detection_signal": "payments.checkout.p99 latency above 2s with elevated DB CPU and repeated product queries.",
+    "severity": "SEV-2",
+    "date": "2025-11-03",
+    "tags": [
+      "payments",
+      "database",
+      "orm",
+      "n-plus-one",
+      "latency"
+    ],
+    "raw_summary": "payments-service: An ORM migration removed eager loading, causing checkout serialization to lazy-load products one item at a time. Fix: Restore eager loading, batch product lookups, add query-count regression coverage, and keep supporting indexes in place."
   }
 ]

@@ -1,99 +1,26 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: payments-service-latency
-  namespace: monitoring
-  labels:
-    app: payments-service
-    team: platform
+  name: payments-service-incident-guardrails
 spec:
   groups:
-    - name: payments-service.latency
-      interval: 30s
+    - name: payments-service.risk
       rules:
-
-        # ── WARNING: early signal (fires before full degradation) ──────────────
-        - alert: PaymentsCheckoutLatencyWarning
-          expr: |
-            histogram_quantile(0.99,
-              rate(http_request_duration_seconds_bucket{
-                service="payments-service",
-                handler="/checkout"
-              }[5m])
-            ) > 0.8
-          for: 2m
-          labels:
-            severity: warning
-            team: payments
-            sev_level: SEV-3
-          annotations:
-            summary: "Payments checkout p99 latency elevated (>800ms)"
-            description: >
-              Checkout p99 latency is {{ $value | humanizeDuration }} — above 800ms warning threshold.
-              Check for slow DB queries or connection pool pressure.
-              Past incident: N+1 query caused by ORM regression (SEV-2, 2025-11-03).
-            runbook_url: "https://wiki.internal/runbooks/payments-checkout-latency"
-            dashboard_url: "https://grafana.internal/d/payments-checkout"
-
-        # ── CRITICAL: incident threshold — matches 2025-11-03 trigger condition ─
-        - alert: PaymentsCheckoutLatencyCritical
-          expr: |
-            histogram_quantile(0.99,
-              rate(http_request_duration_seconds_bucket{
-                service="payments-service",
-                handler="/checkout"
-              }[5m])
-            ) > 2.0
-          for: 1m
+        - alert: CheckoutLatencyCritical
+          expr: histogram_quantile(0.99, rate(payments_checkout_duration_seconds_bucket[5m])) > 2
+          for: 5m
           labels:
             severity: critical
-            team: payments
-            sev_level: SEV-2
-            page: "true"
           annotations:
-            summary: "Payments checkout p99 latency critical (>2s) — SEV-2"
-            description: >
-              Checkout p99 latency is {{ $value | humanizeDuration }}.
-              This matches the 2025-11-03 SEV-2 pattern: likely an N+1 query from an ORM change.
-              Check RDS Performance Insights for repeated single-row product SELECTs.
-              Fix: ensure Order.with_products uses eager_load(:products).
-            runbook_url: "https://wiki.internal/runbooks/payments-checkout-latency"
-
-    - name: payments-service.database
-      interval: 30s
-      rules:
-
-        # ── DB CPU correlates strongly with N+1 query pattern ─────────────────
-        - alert: PaymentsRDSCpuHigh
-          expr: |
-            aws_rds_cpuutilization_average{
-              dbinstance_identifier="payments-db-prod"
-            } > 70
-          for: 3m
+            summary: "Checkout p99 latency is above incident threshold"
+            description: "payments.checkout.p99 latency above 2s with elevated DB CPU and repeated product queries."
+            runbook_url: "https://runbooks.example.com/payments-service"
+        - alert: CheckoutLatencyWarning
+          expr: histogram_quantile(0.99, rate(payments_checkout_duration_seconds_bucket[5m])) > 1
+          for: 10m
           labels:
             severity: warning
-            team: payments
           annotations:
-            summary: "Payments RDS CPU above 70%"
-            description: >
-              RDS CPU is {{ $value }}%. Combined with checkout latency alerts,
-              this may indicate an N+1 query pattern.
-              Run: SHOW PROCESSLIST; and check for repeated product lookups.
-            runbook_url: "https://wiki.internal/runbooks/payments-checkout-latency"
-
-        - alert: PaymentsRDSCpuCritical
-          expr: |
-            aws_rds_cpuutilization_average{
-              dbinstance_identifier="payments-db-prod"
-            } > 85
-          for: 1m
-          labels:
-            severity: critical
-            team: payments
-            page: "true"
-          annotations:
-            summary: "Payments RDS CPU critical (>85%) — possible N+1 query"
-            description: >
-              RDS CPU is {{ $value }}%. This threshold was exceeded during the
-              2025-11-03 N+1 query incident (peaked at 94%).
-              Immediate action: check for full table scans or repeated per-row queries.
+            summary: "Checkout p99 latency is elevated"
+            description: "Early warning for recurring payments-service incident pattern."
+            runbook_url: "https://runbooks.example.com/payments-service"
