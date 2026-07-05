@@ -83,9 +83,6 @@ pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 streamlit run app.py
 ```
-
-Open http://localhost:8501
-
 ---
 
 ## App Tabs
